@@ -22,6 +22,8 @@ interface CarryOver {
 
 let world: World | undefined;
 let activeCleanup: (() => void) | null = null;
+/** Bumped per boot; lets a superseded async boot abandon itself safely. */
+let bootGeneration = 0;
 
 // Rendering/simulation module edits bubble to this boundary: the running
 // World is carried across the swap (design D5) instead of being lost to a
@@ -31,6 +33,7 @@ if (import.meta.hot) {
   import.meta.hot.dispose((data) => {
     (data as CarryOver).world = world;
     activeCleanup?.();
+    activeCleanup = null;
   });
   import.meta.hot.accept();
 }
@@ -40,17 +43,28 @@ function freshWorld(): World {
   return createWorld({ map, startingMoney: STARTING_MONEY, startingLives: STARTING_LIVES });
 }
 
-async function start(): Promise<void> {
+/**
+ * Boots one full session around `carry ?? freshWorld()`: layout and canvas
+ * derive from that world's map, so every entry path — initial load, restart,
+ * HMR swap — plays on a view matching the world it simulates.
+ */
+async function bootSession(carry?: World): Promise<void> {
+  const generation = ++bootGeneration;
   const host = document.getElementById('app');
   if (!host) {
     throw new Error('#app mount element not found');
   }
 
-  // Adopt the carried run when this module hot-swaps; fresh otherwise.
-  world = (import.meta.hot?.data as CarryOver | undefined)?.world ?? freshWorld();
+  world = carry ?? freshWorld();
 
-  const layout = computeBoardLayout(SLICE_MAP.width, SLICE_MAP.height);
+  const layout = computeBoardLayout(world.map.width, world.map.height);
   const { app, root } = await bootRenderer(host, layout.widthPx, layout.heightPx);
+  if (generation !== bootGeneration) {
+    // Superseded while the renderer initialized (restart/HMR race).
+    app.destroy(true, { children: true });
+    root.remove();
+    return;
+  }
 
   const boardView = createBoardView(layout);
   const sceneView = createSceneView(layout);
@@ -92,10 +106,7 @@ async function start(): Promise<void> {
       world!.requestStartWave();
     },
     onRestart() {
-      world = freshWorld();
-      input.reset();
-      sceneView.reset();
-      boardView.invalidate();
+      startSession();
     },
   });
 
@@ -128,8 +139,20 @@ async function start(): Promise<void> {
     unsubscribeTuning();
     accumulator = 0;
     app.destroy(true, { children: true });
-    hudRoot.remove();
+    root.remove(); // takes the HUD subtree with it
   };
 }
 
-void start();
+/**
+ * Session entry point: tears down any live session, then boots — optionally
+ * adopting a carried run. Initial load, restart, and HMR swaps all funnel
+ * through here, so a replaced world is never paired with a stale canvas.
+ */
+function startSession(carry?: World): void {
+  activeCleanup?.();
+  activeCleanup = null;
+  void bootSession(carry);
+}
+
+// Adopt the carried run when this module hot-swaps; fresh otherwise.
+startSession((import.meta.hot?.data as CarryOver | undefined)?.world);

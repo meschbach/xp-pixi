@@ -89,7 +89,7 @@
 
 ## 7. Slice integration pass
 
-- [ ] 7.1 End-to-end playthrough on deployed site: start wave, build towers, route enemies around maze, earn/spend
+- [x] 7.1 End-to-end playthrough on deployed site: start wave, build towers, route enemies around maze, earn/spend
   money, leak a life deliberately, trigger loss + restart, then clear all seven waves to reach the victory screen +
   restart
 - [x] 7.2 Confirm lint/typecheck/test green locally and in CI; sim purity rule verified by intentional violation check
