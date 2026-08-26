@@ -9,6 +9,8 @@ export function rejectionMessage(reason: PlacementIssue): string {
     case 'blocked':
     case 'level-marker':
       return 'Occupied';
+    case 'enemy-present':
+      return 'Enemy in the way';
     case 'not-buildable':
       return "Can't build here";
     case 'would-seal-spawn':

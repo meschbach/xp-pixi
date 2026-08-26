@@ -131,6 +131,16 @@ describe('placement rejection leaves the world untouched', () => {
     expect(distanceTo(world.distanceField, { q: 3, r: 0 })).toBe(enemyDistBefore);
   });
 
+  it('rejects placement on a cell occupied by a living enemy without charge', () => {
+    const world = openWorld();
+    world.spawnEnemy({ hp: 9, speed: 0, killReward: 5 });
+    Object.assign(world.enemies[0]!, { fromCell: { q: 4, r: 1 }, toCell: { q: 4, r: 1 } });
+
+    expect(tryPlaceTower(world, { q: 4, r: 1 })).toEqual({ ok: false, reason: 'enemy-present' });
+    expect(world.money).toBe(1000);
+    expect(world.towers).toHaveLength(0);
+  });
+
   it('rejects placements once the run is over', () => {
     const map = createGameMap({ width: 2, height: 1, spawn: { q: 0, r: 0 }, goal: { q: 1, r: 0 } });
     const world = createWorld({ map, startingMoney: 1000, startingLives: 1 });

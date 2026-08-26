@@ -282,7 +282,7 @@ export function attachInput(
             }
             const affordable = world.money >= def.cost;
             const focusSource = ui.hover ? 'hover' : 'selected';
-            const key = `${cellKeyOf(activeFocus)}|${focusSource}|${world.towers.length}|${affordable}`;
+            const key = `${cellKeyOf(activeFocus)}|${focusSource}|${world.towers.length}|${affordable}|${world.tickCount}`;
             if (cache && cache.key === key) {
                 ui.preview = cache.preview;
                 return;

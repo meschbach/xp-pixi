@@ -17,6 +17,7 @@ export type PlaceResult =
         | 'out-of-bounds'
         | 'not-buildable'
         | 'blocked'
+        | 'enemy-present'
         | 'level-marker'
         | 'unaffordable'
         | 'would-seal-spawn'
@@ -80,6 +81,9 @@ export function checkPlacement(world: World, cell: AxialCoord, cost: number): Pl
   if (target.blocked) {
     // Authored obstacle or an existing tower occupies the tile.
     return { ok: false, reason: 'blocked' };
+  }
+  if (world.enemies.some((e) => e.hp > 0 && (sameCell(e.fromCell, cell) || sameCell(e.toCell, cell)))) {
+    return { ok: false, reason: 'enemy-present' };
   }
   if (sameCell(cell, world.map.spawn) || sameCell(cell, world.map.goal)) {
     return { ok: false, reason: 'level-marker' };

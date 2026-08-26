@@ -22,20 +22,21 @@ describe('coverage computation', () => {
     const from = { q: 2, r: 2 };
     const coverage = computeCoverage(map, from, 2);
 
-    // Open lattice: path distance equals hex distance. Rings 1+2 hold 6+12 cells.
+    // Open lattice: path distance equals hex distance. Rings 1+2 hold 6+12 cells,
+    // plus the tower's own cell (zero-hop coverage).
     let expected = 0;
     for (let q = 0; q < 5; q++) {
       for (let r = 0; r < 5; r++) {
         const d = hexDistance(from, { q, r });
-        const inside = d >= 1 && d <= 2;
+        const inside = (d === 0) || (d >= 1 && d <= 2);
         if (inside) {
           expected++;
         }
         expect(coverage.has(cellKey({ q, r })), `${q},${r}`).toBe(inside);
       }
     }
-    expect(expected).toBe(18);
-    expect(coverage.size).toBe(18);
+    expect(expected).toBe(19);
+    expect(coverage.size).toBe(19);
   });
 
   it('excludes wall-shadowed cells that are geometrically near', () => {
@@ -66,6 +67,13 @@ describe('coverage computation', () => {
   it('returns an empty set for zero range', () => {
     const map = corridorWithShoulder(4);
     expect(computeCoverage(map, { q: 1, r: 1 }, 0).size).toBe(0);
+  });
+
+  it('includes the tower own cell in coverage', () => {
+    const map = corridorWithShoulder(6);
+    const cell = { q: 2, r: 1 };
+    const coverage = computeCoverage(map, cell, 2);
+    expect(coverage.has(cellKey(cell))).toBe(true);
   });
 });
 
@@ -120,6 +128,26 @@ describe('targeting', () => {
 
     const tower = world.towers[0]!;
     expect(tower.targetId).toBeNull();
+  });
+
+  it('targets and damages an enemy on its own cell', () => {
+    const map = corridorWithShoulder(6);
+    const world = makeWorld(map);
+
+    // Place a tower at (1,1), then spawn an enemy on its cell.
+    expect(tryPlaceTower(world, { q: 1, r: 1 })).toEqual({ ok: true });
+    const tower = world.towers[0]!;
+
+    world.spawnEnemy({ hp: 10, speed: 0, killReward: 5 });
+    const enemy = world.enemies[0]!;
+    // Position the enemy directly on the tower's cell.
+    Object.assign(enemy, { fromCell: { ...tower.cell }, toCell: { ...tower.cell } });
+
+    // Tower should target the enemy on its own cell via the self-cell special case,
+    // even though the tower cell is blocked and has no distance-field entry.
+    world.tick();
+    expect(tower.targetId).toBe(enemy.id);
+    expect(enemy.hp).toBeLessThan(10);
   });
 
   it('drops an engaged target the moment a placement severs its fire corridor', () => {

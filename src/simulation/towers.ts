@@ -1,5 +1,5 @@
 import type { AxialCoord } from './hex';
-import { cellKey } from './hex';
+import { cellKey, sameCell } from './hex';
 import type { GameMap } from './map';
 import { unblockedNeighbors } from './map';
 import { distanceTo } from './distanceField';
@@ -36,6 +36,7 @@ export function computeCoverage(map: GameMap, from: AxialCoord, rangeHops: numbe
   }
 
   const originKey = cellKey(from);
+  coverage.add(originKey);
   const visited = new Set<string>([originKey]);
   // Queue of [coord, depth]; index-based dequeue keeps this allocation-light.
   const queue: Array<[AxialCoord, number]> = [[from, 0]];
@@ -78,6 +79,9 @@ export function selectTarget(world: World, tower: Tower): Enemy | undefined {
   for (const enemy of world.enemies) {
     if (enemy.hp <= 0 || !tower.coverage.has(cellKey(enemy.fromCell))) {
       continue;
+    }
+    if (sameCell(enemy.fromCell, tower.cell)) {
+      return enemy;
     }
     const d = distanceTo(world.distanceField, enemy.fromCell);
     if (d === undefined) {
