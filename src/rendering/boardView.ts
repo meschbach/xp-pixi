@@ -34,13 +34,22 @@ export interface BoardView {
   invalidate(): void;
 }
 
+/**
+ * Tracks whether the board tiles need redrawing.
+ * - 'initial': never drawn; first update must render
+ * - 'current': drawn and matches current tower set
+ * - 'stale': tower set changed or invalidate() called; needs redraw
+ */
+type BoardRenderState = 'initial' | 'current' | 'stale';
+
 export function createBoardView(layout: BoardLayout): BoardView {
   const container = new Container();
   const coverageG = new Graphics();
   const tilesG = new Graphics();
   container.addChild(coverageG, tilesG);
 
-  let signature = '';
+  let state: BoardRenderState = 'initial';
+  let towerSetKey = '';
 
   function roleOf(world: World, key: string, cell: GameCell): 'spawn' | 'goal' | 'rock' | 'tower' | 'buildable' {
     if (key === cellKey(world.map.spawn)) return 'spawn';
@@ -86,14 +95,15 @@ export function createBoardView(layout: BoardLayout): BoardView {
   return {
     container,
     invalidate() {
-      signature = '';
+      state = 'stale';
     },
     update(world: World) {
       const next = world.towers.map((t) => t.id).join(',');
-      if (next === signature) {
+      if (state === 'current' && next === towerSetKey) {
         return;
       }
-      signature = next;
+      state = 'current';
+      towerSetKey = next;
       drawTiles(world);
       drawCoverage(world);
     },

@@ -1,12 +1,7 @@
 import type { World } from '../simulation/world';
 import { getBalance } from '../simulation/registry';
 import { TICK_RATE_HZ } from '../simulation/clock';
-
-/**
- * DOM HUD layered over the canvas: money/lives/wave readout, the first-wave
- * start control, intermission countdown, and game-over/victory overlays with
- * a restart button. Rendering owns DOM; simulation stays pure.
- */
+import type { PointerType } from './gestureFsm';
 
 export interface Hud {
   update(world: World): void;
@@ -17,15 +12,23 @@ export interface HudCallbacks {
   onRestart(): void;
 }
 
-export function createHud(root: HTMLElement, callbacks: HudCallbacks): Hud {
-  root.innerHTML = `
+export function createHud(root: HTMLElement, callbacks: HudCallbacks, getPointerType: () => PointerType): Hud {
+  const isCoarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+  let lastHintPointer: PointerType = isCoarse ? 'touch' : 'mouse';
+  let lastHintText = '';
+
+  const hudContainer = document.createElement('div');
+  hudContainer.className = 'hud-container';
+  root.appendChild(hudContainer);
+
+  hudContainer.innerHTML = `
     <div class="hud-stats">
       <span class="hud-money"></span>
       <span class="hud-lives"></span>
       <span class="hud-wave"></span>
     </div>
     <button class="hud-start hidden" type="button">Start wave</button>
-    <div class="hud-hint">Click a buildable tile to place a tower</div>
+    <div class="hud-hint"></div>
     <div class="hud-overlay hidden">
       <div class="hud-panel">
         <h1></h1>
@@ -35,11 +38,12 @@ export function createHud(root: HTMLElement, callbacks: HudCallbacks): Hud {
     </div>
   `;
 
-  const moneyEl = root.querySelector('.hud-money') as HTMLElement;
-  const livesEl = root.querySelector('.hud-lives') as HTMLElement;
-  const waveEl = root.querySelector('.hud-wave') as HTMLElement;
-  const startBtn = root.querySelector('.hud-start') as HTMLButtonElement;
-  const overlay = root.querySelector('.hud-overlay') as HTMLElement;
+  const moneyEl = hudContainer.querySelector('.hud-money') as HTMLElement;
+  const livesEl = hudContainer.querySelector('.hud-lives') as HTMLElement;
+  const waveEl = hudContainer.querySelector('.hud-wave') as HTMLElement;
+  const startBtn = hudContainer.querySelector('.hud-start') as HTMLButtonElement;
+  const hintEl = hudContainer.querySelector('.hud-hint') as HTMLElement;
+  const overlay = hudContainer.querySelector('.hud-overlay') as HTMLElement;
   const overlayTitle = overlay.querySelector('h1') as HTMLElement;
   const overlayText = overlay.querySelector('p') as HTMLElement;
 
@@ -53,6 +57,13 @@ export function createHud(root: HTMLElement, callbacks: HudCallbacks): Hud {
   let lastWave = '';
   let lastStartVisible: boolean | null = null;
   let lastOverlay = '';
+
+  function hintText(pt: PointerType): string {
+    if (pt === 'touch') {
+      return 'Tap a tile to select, then confirm';
+    }
+    return 'Click a buildable tile to place a tower';
+  }
 
   return {
     update(world: World) {
@@ -75,6 +86,17 @@ export function createHud(root: HTMLElement, callbacks: HudCallbacks): Hud {
       if (startVisible !== lastStartVisible) {
         lastStartVisible = startVisible;
         startBtn.classList.toggle('hidden', !startVisible);
+      }
+
+      const currentPointer = getPointerType();
+      if (currentPointer !== lastHintPointer) {
+        lastHintPointer = currentPointer;
+        lastHintText = '';
+      }
+      const newHint = hintText(lastHintPointer);
+      if (newHint !== lastHintText) {
+        lastHintText = newHint;
+        hintEl.textContent = newHint;
       }
 
       const overlayState = world.state === 'running' ? '' : world.state;

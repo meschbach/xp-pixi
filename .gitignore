@@ -3,3 +3,5 @@ dist/
 run/
 *.local
 .DS_Store
+/.idea/
+/.opencode/

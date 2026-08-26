@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>xp-pixi</title>
     <style>
       html,
@@ -10,12 +10,14 @@
         margin: 0;
         padding: 0;
         background: #101018;
+        overflow: hidden;
       }
       #app {
         display: flex;
         align-items: center;
         justify-content: center;
         min-height: 100vh;
+        min-height: 100dvh;
       }
       .game-root {
         position: relative;
@@ -23,21 +25,22 @@
         color: #e8ecf1;
       }
       .hud-root {
-        position: absolute;
+        position: fixed;
         inset: 0;
         pointer-events: none;
         user-select: none;
+        z-index: 10;
       }
       .hud-root .hidden {
         display: none !important;
       }
       .hud-stats {
         position: absolute;
-        top: 10px;
-        left: 14px;
+        top: max(10px, env(safe-area-inset-top, 10px));
+        left: max(14px, env(safe-area-inset-left, 14px));
         display: flex;
-        gap: 20px;
-        font-size: 18px;
+        gap: clamp(10px, 3vw, 20px);
+        font-size: clamp(14px, 4vw, 18px);
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
       }
       .hud-money {
@@ -51,27 +54,29 @@
       }
       .hud-start {
         position: absolute;
-        bottom: 16px;
+        bottom: max(16px, env(safe-area-inset-bottom, 16px));
         left: 50%;
         transform: translateX(-50%);
         pointer-events: auto;
         font: inherit;
-        font-size: 16px;
+        font-size: clamp(14px, 4vw, 16px);
         padding: 9px 26px;
         background: #2f9e44;
         color: #fff;
         border: none;
         border-radius: 6px;
         cursor: pointer;
+        backdrop-filter: blur(4px);
+        background: rgba(47, 158, 68, 0.85);
       }
       .hud-start:hover {
-        background: #37b24d;
+        background: rgba(55, 178, 77, 0.9);
       }
       .hud-hint {
         position: absolute;
-        bottom: 14px;
-        left: 16px;
-        font-size: 12px;
+        bottom: max(14px, env(safe-area-inset-bottom, 14px));
+        left: max(16px, env(safe-area-inset-left, 16px));
+        font-size: clamp(10px, 3vw, 12px);
         opacity: 0.55;
       }
       .hud-overlay {
@@ -87,16 +92,17 @@
         text-align: center;
       }
       .hud-panel h1 {
-        font-size: 44px;
+        font-size: clamp(28px, 8vw, 44px);
         margin: 0 0 8px;
       }
       .hud-panel p {
         margin: 0 0 20px;
         opacity: 0.85;
+        font-size: clamp(14px, 4vw, 18px);
       }
       .hud-restart {
         font: inherit;
-        font-size: 18px;
+        font-size: clamp(14px, 4vw, 18px);
         padding: 10px 30px;
         background: #1971c2;
         color: #fff;
@@ -106,6 +112,76 @@
       }
       .hud-restart:hover {
         background: #1c7ed6;
+      }
+      .build-sheet {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        pointer-events: auto;
+        z-index: 100;
+      }
+      .build-sheet.hidden {
+        display: none !important;
+      }
+      .build-sheet-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+      }
+      .build-sheet-panel {
+        position: relative;
+        background: #1a1a24;
+        border-radius: 12px 12px 0 0;
+        padding: 16px 20px;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+        animation: slideUp 0.2s ease-out;
+      }
+      @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      .build-sheet-close {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: #e8ecf1;
+        font-size: 24px;
+        cursor: pointer;
+        opacity: 0.6;
+        pointer-events: auto;
+      }
+      .build-sheet-close:hover {
+        opacity: 1;
+      }
+      .build-sheet-title {
+        font-size: clamp(14px, 4vw, 18px);
+        margin-bottom: 12px;
+        color: #e8ecf1;
+      }
+      .build-sheet-confirm {
+        font: inherit;
+        font-size: clamp(14px, 4vw, 16px);
+        padding: 10px 30px;
+        background: #2f9e44;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        pointer-events: auto;
+      }
+      .build-sheet-confirm:disabled {
+        background: #555;
+        cursor: default;
+      }
+      .build-sheet-confirm:not(:disabled):hover {
+        background: #37b24d;
       }
     </style>
   </head>

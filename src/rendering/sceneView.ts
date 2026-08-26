@@ -129,12 +129,13 @@ export function createSceneView(layout: BoardLayout): SceneView {
 
   function drawCoverageFocus(g: Graphics, world: World, ui: SceneUiState): void {
     g.clear();
-    if (!ui.hover && !ui.selected) {
+    const activeFocus = ui.hover ?? ui.selected;
+    if (!activeFocus) {
       return;
     }
-    const focusKeys = new Set([ui.hover, ui.selected].filter((c) => c !== null).map(cellKey));
+    const focusKey = cellKey(activeFocus);
     for (const tower of world.towers) {
-      if (!focusKeys.has(cellKey(tower.cell))) {
+      if (cellKey(tower.cell) !== focusKey) {
         continue;
       }
       for (const key of tower.coverage) {
@@ -242,7 +243,8 @@ export function createSceneView(layout: BoardLayout): SceneView {
 function drawPreview(g: Graphics, layout: BoardLayout, ui: SceneUiState): void {
   g.clear();
   const preview = ui.preview;
-  if (!preview || !sameAs(ui.hover, preview.cell)) {
+  const activeFocus = ui.hover ?? ui.selected;
+  if (!preview || !sameAs(activeFocus, preview.cell)) {
     return;
   }
 
@@ -266,11 +268,12 @@ function drawPreview(g: Graphics, layout: BoardLayout, ui: SceneUiState): void {
 
 function drawOutlines(g: Graphics, layout: BoardLayout, ui: SceneUiState): void {
   g.clear();
-  if (ui.hover) {
-    g.poly(hexPolygon(layout, ui.hover, 0.94)).stroke({ width: 2, color: COLOR_HOVER, alpha: 0.65 });
-  }
-  if (ui.selected && !sameAs(ui.hover, ui.selected)) {
-    g.poly(hexPolygon(layout, ui.selected, 0.94)).stroke({ width: 2.5, color: COLOR_SELECTED, alpha: 0.95 });
+  const activeFocus = ui.hover ?? ui.selected;
+  if (activeFocus) {
+    const color = ui.hover ? COLOR_HOVER : COLOR_SELECTED;
+    const alpha = ui.hover ? 0.65 : 0.95;
+    const width = ui.hover ? 2 : 2.5;
+    g.poly(hexPolygon(layout, activeFocus, 0.94)).stroke({ width, color, alpha });
   }
 }
 

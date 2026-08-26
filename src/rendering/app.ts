@@ -4,17 +4,18 @@ const BACKGROUND = '#101018';
 
 export interface BootResult {
   app: Application;
-  /** Positioned wrapper around the canvas; HUD layers attach here. */
   root: HTMLDivElement;
 }
 
-export async function bootRenderer(host: HTMLElement, widthPx: number, heightPx: number): Promise<BootResult> {
+export async function bootRenderer(host: HTMLElement, viewportWidth: number, viewportHeight: number): Promise<BootResult> {
   const app = new Application();
   await app.init({
-    width: widthPx,
-    height: heightPx,
+    width: viewportWidth,
+    height: viewportHeight,
     background: BACKGROUND,
     antialias: true,
+    resolution: Math.min(window.devicePixelRatio, 2),
+    autoDensity: true,
   });
 
   const root = document.createElement('div');
