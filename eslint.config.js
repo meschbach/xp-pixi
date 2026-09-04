@@ -5,7 +5,7 @@ const DOM_GLOBAL_MESSAGE =
   'Simulation must stay pure: no DOM/browser globals. Rendering owns pixels.';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'scripts'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

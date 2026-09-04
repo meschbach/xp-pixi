@@ -9,7 +9,8 @@
     "preview": "vite preview --strictPort",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "cvd-check": "node scripts/cvd-check.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.20.0"

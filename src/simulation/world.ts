@@ -9,6 +9,7 @@ import { startWave, tickSpawner } from './waves';
 import type { PendingSpawn } from './waves';
 import { tickTowers } from './towers';
 import type { Tower } from './towers';
+import type { CombatEvent } from './events';
 
 /** Fixed simulation rate (design D6). Rendering reads state; it never advances it. */
 export { TICK_RATE_HZ };
@@ -57,7 +58,10 @@ export interface World {
   state: RunState;
   enemies: Enemy[];
   tickCount: number;
-  nextEnemyId: number;
+  nextEntityId: number;
+
+  /** Live, untrimmed ground-truth combat events, oldest-first (design D10). */
+  combatEvents: readonly CombatEvent[];
 
   wavePhase: WavePhase;
   /** Index into the balance-data wave list; -1 before the first wave starts. */
@@ -67,7 +71,6 @@ export interface World {
   ticksToNextWave: number;
 
   towers: Tower[];
-  nextTowerId: number;
 
   /** Advances the simulation by one fixed tick (1 / TICK_RATE_HZ seconds). */
   tick(): void;
@@ -82,9 +85,31 @@ export interface World {
   creditMoney(amount: number): void;
   /** Attempts to pay `amount`; returns false (unchanged) when unaffordable. */
   trySpend(amount: number): boolean;
+  /**
+   * Appends a shot fact to the outbox with a monotonic, never-resetting id
+   * (design D1). Called from the combat pipeline; the presentation layer
+   * never writes events.
+   */
+  emitShot(event: Omit<CombatEvent, 'id'>): void;
+  /**
+   * Monotonically advances the consumer acknowledgment cursor. Acks that do
+   * not advance the cursor are ignored, so it can never move backward. The
+   * outbox reclaims every entry at or below the lowest acked id at the top
+   * of each tick (design D2).
+   */
+  ackEvents(upToId: number): void;
 }
 
 export function createWorld(options: WorldOptions): World {
+  // Outbox state (design D1/D2/D10): events are stored physically in an
+  // array and trimmed by advancing a head offset — event ids are the
+  // identity/order key and are never reused, so a recycled slot never
+  // aliases a not-yet-consumed event.
+  const outboxEvents: CombatEvent[] = [];
+  let outboxHead = 0;
+  let nextEventId = 0;
+  let ackCursor = -1;
+
   const world: World = {
     map: options.map,
     distanceField: computeDistanceField(options.map),
@@ -93,7 +118,8 @@ export function createWorld(options: WorldOptions): World {
     state: 'running',
     enemies: [],
     tickCount: 0,
-    nextEnemyId: 1,
+    nextEntityId: 1,
+    combatEvents: [],
 
     wavePhase: 'awaiting-start',
     currentWaveIndex: -1,
@@ -101,8 +127,8 @@ export function createWorld(options: WorldOptions): World {
     ticksToNextWave: 0,
 
     towers: [],
-    nextTowerId: 1,
     tick() {
+      trimOutbox(); // reclaim acknowledged storage at the top of each tick (D2)
       tickWorld(world);
     },
     requestStartWave() {
@@ -121,7 +147,31 @@ export function createWorld(options: WorldOptions): World {
       world.money -= amount;
       return true;
     },
+    emitShot(event) {
+      outboxEvents.push({ ...event, id: nextEventId++ });
+    },
+    ackEvents(upToId) {
+      // Monotonic only (design D2): the cursor can never move backward.
+      if (upToId > ackCursor) {
+        ackCursor = upToId;
+      }
+    },
   };
+
+  Object.defineProperty(world, 'combatEvents', {
+    get(): readonly CombatEvent[] {
+      return trimOutbox();
+    },
+  });
+
+  function trimOutbox(): readonly CombatEvent[] {
+    // Reclaim storage at or below the acknowledged cursor (design D2/D10).
+    while (outboxHead < outboxEvents.length && outboxEvents[outboxHead]!.id <= ackCursor) {
+      outboxHead++;
+    }
+    return outboxEvents.slice(outboxHead);
+  }
+
   return world;
 }
 
@@ -164,7 +214,7 @@ function spawnEnemy(world: World, spec: EnemySpec, waveIndex = -1): void {
   }
   const spawn = world.map.spawn;
   world.enemies.push({
-    id: world.nextEnemyId++,
+    id: world.nextEntityId++,
     typeId: spec.typeId,
     hp: spec.hp,
     maxHp: spec.hp,

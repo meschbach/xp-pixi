@@ -56,18 +56,20 @@ function createTestWorld(map?: GameMap): World {
     state: 'running',
     enemies: [],
     tickCount: 0,
-    nextEnemyId: 1,
+    nextEntityId: 1,
+    combatEvents: [],
     wavePhase: 'awaiting-start',
     currentWaveIndex: -1,
     pendingSpawns: [],
     ticksToNextWave: 0,
     towers: [],
-    nextTowerId: 1,
     tick: () => {},
     requestStartWave: () => true,
     spawnEnemy: () => {},
     creditMoney: () => {},
     trySpend: () => true,
+    emitShot: () => {},
+    ackEvents: () => {},
   } as World;
 }
 

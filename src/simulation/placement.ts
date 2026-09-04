@@ -139,7 +139,7 @@ export function tryPlaceTower(world: World, cell: AxialCoord, typeId?: string): 
   setBlocked(world.map, cell, true);
   world.distanceField = check.field;
   world.towers.push({
-    id: world.nextTowerId++,
+    id: world.nextEntityId++,
     typeId: def.id,
     cell: { ...cell },
     damage: def.damage,

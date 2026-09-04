@@ -113,6 +113,18 @@ export function tickTowers(world: World): void {
 
     if (target && tower.cooldownRemaining <= 0) {
       tower.cooldownRemaining = tower.cooldownTicks;
+      // Publish the ground-truth shot fact (design D5). Damage still lands
+      // instantly on this tick; projectiles / hit effects are presentation
+      // only. The world method appends with a monotonic id (no new import).
+      world.emitShot({
+        kind: 'shot',
+        tick: world.tickCount,
+        towerId: tower.id,
+        targetId: target.id,
+        targetCell: target.fromCell,
+        targetToCell: target.toCell,
+        targetProgress: target.progress,
+      });
       target.hp -= tower.damage;
       if (target.hp <= 0) {
         world.creditMoney(target.killReward);
